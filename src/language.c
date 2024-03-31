@@ -2,14 +2,7 @@
 #include "stack.h"
 #include "bytereader.h"
 
-//#include "runtime/runtime_common.h"
 #include "runtime/runtime.h"
-//#ifdef __linux__
-//#include "runtime/runtime.h"
-//#else
-//#include "runtime-macOS/runtime_common.h"
-//#include "runtime-macOS/runtime.h"
-//#endif
 
 #define LowBits(x) ((x) & 0x0F)
 #define HighBits(x) (((x) & 0xF0) >> 4)

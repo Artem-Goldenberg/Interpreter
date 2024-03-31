@@ -4,6 +4,10 @@ TESTS=$(sort $(basename $(wildcard *.lama)))
 
 check: $(TESTS)
 
+check-analyser: Sort.lama
+	@$(LAMAC) -b $<
+	@$(testI) Sort.bc
+
 #time = $(shell which time)
 
 $(TESTS): %: %.lama

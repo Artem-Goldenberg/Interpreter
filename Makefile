@@ -9,7 +9,7 @@ test: build
 	$(MAKE) -C regression testI=$(abspath src/lamaI)
 
 .PHONY: perfomance
-perfomance: lamaI
+perfomance: build
 	$(MAKE) -C perfomance testI=$(abspath src/lamaI)
 
 clean:

@@ -1,0 +1,36 @@
+# This is a basic workflow to help you get started with Actions
+
+name: CI
+
+# Controls when the workflow will run
+on:
+  # Triggers the workflow on push or pull request events but only for the "main" branch
+  push:
+    branches: [ "main" ]
+  pull_request:
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+jobs:
+  Testing:
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: compiler-update
+        run: |
+          sudo apt update
+          sudo apt install gcc-multilib
+
+      - name: Set-up OCaml 4.13.1
+        uses: ocaml/setup-ocaml@v2
+        with:
+          ocaml-compiler: 4.13.1
+
+      - run: opam pin add Lama https://github.com/PLTools/Lama.git\#1.20 --no-action
+      - run: opam depext Lama --yes --with-test
+      - run: opam install Lama --yes
+      - run: eval $(opam env)
+      - run: opam exec -- make test

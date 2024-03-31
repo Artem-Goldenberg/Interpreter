@@ -1,6 +1,11 @@
 # MacOS
 .DS_Store
 *.xcodeproj
+entitlements
+
+# Docker
+.yml
+
 
 # Prerequisites
 *.d

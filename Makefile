@@ -1,23 +1,18 @@
-sources = main.c language.c bytereader.c stack.c
-stdlib = runtime/runtime.a
-
-CC = gcc
-CFLAGS = -m32 -g
 export LAMAC = lamac
 
-test: lamaI | regression
-	$(MAKE) -C regression check testI=$(abspath ./lamaI)
+.PHONY: build
+build:
+	$(MAKE) -C src
 
-perfomance: lamaI | regression
-	$(MAKE) -C regression
+.PHONY: test
+test: build
+	$(MAKE) -C regression testI=$(abspath src/lamaI)
 
-lamaI: $(sources) $(stdlib)
-	$(LINK.c) $^ -o $@
-
-$(stdlib): runtime/gc_runtime.s runtime/runtime.c | runtime
-	$(MAKE) -C runtime
+.PHONY: perfomance
+perfomance: lamaI
+	$(MAKE) -C perfomance testI=$(abspath src/lamaI)
 
 clean:
-	$(RM) $(stdlib) lamaI
-	$(MAKE) clean -C runtime
+	$(MAKE) clean -C src
 	$(MAKE) clean -C regression
+	$(MAKE) clean -C perfomance

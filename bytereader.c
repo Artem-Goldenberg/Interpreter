@@ -3,8 +3,16 @@
 
 static bytefile* current;
 
+int* globalAt(int pos) {
+    return current->global_ptr + pos;
+}
+
+char* codeAt(int pos) {
+    return current->code_ptr + pos;
+}
+
 char* getString(int pos) {
-    return &current->string_ptr[pos];
+    return current->string_ptr + pos;
 }
 
 char* publicName(int i) {

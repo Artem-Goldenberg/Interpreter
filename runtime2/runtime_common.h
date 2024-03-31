@@ -3,8 +3,8 @@
 #include <stddef.h>
 
 // this flag makes GC behavior a bit different for testing purposes.
-#define DEBUG_VERSION
-#define FULL_INVARIANT_CHECKS
+//#define DEBUG_VERSION
+//#define FULL_INVARIANT_CHECKS
 
 #define STRING_TAG 0x00000001
 #define ARRAY_TAG 0x00000003

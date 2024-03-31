@@ -1,26 +1,25 @@
 #include <stdio.h>
-#include <stdlib.h>
-//#include "bytereader.h"
-//#include "language.h"
+#include "stack.h"
+#include "language.h"
+#include "bytereader.h"
 
-int a[] = {
-    [1] = 34,
-    
-};
+byte* code;
 
 int main(int argc, char* argv[]) {
-//    if (argc != 2) {
-//        fprintf(stderr, "Usage: ./main <bytefile>");
-//        return 1;
-//    }
-    int b;
-    scanf("%d", &b);
+    if (argc != 2) {
+        fprintf(stderr, "Usage: ./main <bytefile>");
+        return 1;
+    }
 
-    int* a = malloc(100);
+    dumpFile(argv[1]);
+    initStack();
 
-    //    bytefile* f = read_file(argv[1]);
+    code = (byte*)codeAt(0);
+    while (code) 
+        interpret();
 
-    free(a);
+    destroyStack();
+    deleteFile();
 
     return 0;
 }

@@ -6,25 +6,18 @@
 typedef uint8_t byte;
 typedef uint32_t word;
 
-typedef void (*Handler)(byte l);
+typedef void (*Handler)(void);
 
-void binop(byte l);
-void value(byte l);
-void boxed(byte l);
-void control(byte l);
-void pattern(byte l);
-void call(byte l);
+void interpret(void);
 
-Handler handlers[] = {
-    [0] = binop,
-    [1] = value,
-    [2] = boxed,
-    [3] = boxed,
-    [4] = boxed,
-    [5] = control,
-    [6] = pattern,
-    [7] = call
-};
+void binop(void);
+void other(void);
+void boxed(void);
+void control(void);
+void pattern(void);
+void call(void);
+
+extern const Handler handlers[];
 
 typedef enum {
     Plus = 1, Minus, Multiply, Divide, Mod,
@@ -39,43 +32,35 @@ typedef enum {
     Jmp, End, Ret,
     Drop, Dup,
     Swap, Elem
-} Whatever;
+} Valueish;
+
+typedef enum {
+    CJmpZero, CJmpNotZero,
+    Begin, CBegin, BClosure,
+    CallC, Call, Tag,
+    Array,
+    Fail,
+    Line
+} ControlFlow;
 
 typedef enum {
     PStringCmp, PString,
     PArray,
     PSexp,
     PBoxed, PUnboxed,
-    PColure
+    PClosure
 } Pattern;
 
-//typedef enum {
-//    Binop = 0x0,
-//    Value = 0x1,
-//    Movin =
-//}
+typedef enum {
+    Global, Local, Argument, Closure
+} Location;
 
-//typedef enum {
-//    Binop = 0x00,
-//    Const = 0x10,
-//    String = 0x11,
-//    Sexp = 0x12,
-//    Sti = 0x13, Sta = 0x14,
-//    Ld = , Lda,
-//    St, Sti, Sta,
-//    Elem,
-//    Label, FLabel, SLabel,
-//    Jmp, CJmp,
-//    Begin, End,
-//    Closure, Proto, Pproto,
-//    Pcallc, Callc, Call, 
-//    Ret,
-//    Drop, Dup, Swap,
-//    Tag, Array, Patt,
-//    Fail,
-//    Extern, Public,
-//    Import,
-//    Line
-//} Instruction;
+typedef enum {
+    LD = 2, LDA, ST
+} LoadStoreOperation;
+
+typedef enum {
+    LRead, LWrite, LLenght, LString, BArray
+} StandardFunction;
 
 #endif /* language_h */

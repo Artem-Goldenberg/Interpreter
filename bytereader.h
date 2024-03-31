@@ -17,6 +17,10 @@ typedef struct {
     char  buffer[0];
 } bytefile;
 
+int* globalAt(int pos);
+
+char* codeAt(int pos);
+
 /* Gets a string from a string table by an index */
 char* getString(int pos);
 

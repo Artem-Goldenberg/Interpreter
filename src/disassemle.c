@@ -52,9 +52,10 @@ static char* dpf(const char* format, ...) {
 
 static char* printClosure(void);
 
-byte* code;
+static byte* code;
 
 char* disassemle(void) {
+    if (!code) return NULL;
     byte c = *code++;
     byte h = HighBits(c), l = LowBits(c);
     switch (h) {

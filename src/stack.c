@@ -13,7 +13,7 @@ static size_t* stackEnd;
 
 extern void __gc_init(void);
 
-void initStack(void) {
+void initStack(int globalsCount) {
     stackEnd = (size_t*)malloc(STACK_SIZE);
     if (!stackEnd)
         failure("Unable to allocate stack memory\n");
@@ -22,6 +22,9 @@ void initStack(void) {
     __gc_init();
 
     fp = (size_t*)__gc_stack_top;
+
+    // allocate for global variables
+    Down(__gc_stack_top, globalsCount);
 
     push(0); // 0 arg
     push(0); // stop interpreting
@@ -39,6 +42,10 @@ void push(size_t value) {
 
 size_t* top(void) {
     return (size_t*)__gc_stack_top;
+}
+
+size_t* bot(void) {
+    return (size_t*)((size_t)stackEnd + STACK_SIZE);
 }
 
 size_t pop(void) {

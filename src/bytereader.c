@@ -3,8 +3,8 @@
 
 static bytefile* current;
 
-int* globalAt(int pos) {
-    return current->global_ptr + pos;
+int globalsCount(void) {
+    return current->global_area_size;
 }
 
 char* codeAt(int pos) {
@@ -25,6 +25,10 @@ int publicOffset(int i) {
 
 void deleteFile(void) {
     free(current);
+}
+
+static void badFile(const char* msg) {
+    failure("Incorrect file format: %s\n", msg);
 }
 
 void dumpFile(char *fname) {
@@ -51,13 +55,21 @@ void dumpFile(char *fname) {
     if (size != fread (&file->stringtab_size, 1, size, f)) {
         failure ("%s\n", strerror (errno));
     }
+    if (file->stringtab_size < 0) badFile("stringtab size is negative");
+    if (file->public_symbols_number < 0) badFile("public symbols number is negative");
+    if (file->global_area_size < 0) badFile("global area size is negative");
+
+    const long words = size / sizeof(int);
+    // they can't be more than a file size
+    if (file->stringtab_size > size) badFile("stringtab size is too big");
+    if (file->public_symbols_number > words) badFile("public symbols number is too big");
+    if (file->global_area_size > words) badFile("global area size is too big");
 
     fclose (f);
 
     file->string_ptr  = &file->buffer [file->public_symbols_number * 2 * sizeof(int)];
     file->public_ptr  = (int*) file->buffer;
     file->code_ptr    = &file->string_ptr [file->stringtab_size];
-    file->global_ptr  = (int*) malloc (file->global_area_size * sizeof (int));
 
     current = file;
 }

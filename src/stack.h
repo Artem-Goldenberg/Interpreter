@@ -5,11 +5,12 @@
 
 #include <stddef.h>
 
-void initStack(void);
+void initStack(int globalsCount);
 
 void push(size_t value);
 size_t pop(void);
 size_t* top(void);
+size_t* bot(void);
 
 void reverse(int n);
 void discard(int n);

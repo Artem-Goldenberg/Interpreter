@@ -4,27 +4,25 @@
 #include "disassemle.h"
 #include "Set/Set.h"
 
-extern byte* code;
-
 typedef struct {
     char* bytecode;
     int count;
 } Entry;
 
-int entryHash(const void* e, int buckets);
-int entryCmp(const void* e1, const void* e2);
-void entryFree(void* e);
+static int entryHash(const void* e, int buckets);
+static int entryCmp(const void* e1, const void* e2);
+static void entryFree(void* e);
 
-void appendCount(void* entry, void* dump) {
+static void appendCount(void* entry, void* dump) {
     Entry** loc = dump;
     *(*loc)++ = *(Entry*)entry;
 }
 
-int frequencyCmp(const void* e1, const void* e2) {
+static int frequencyCmp(const void* e1, const void* e2) {
     return ((Entry*)e2)->count - ((Entry*)e1)->count;
 }
 
-void printCounts(Set* counts) {
+static void printCounts(Set* counts) {
     int n = countSet(counts);
     Entry* dump = calloc(n, sizeof(Entry));
     Entry* base = dump;
@@ -51,7 +49,7 @@ int main(int argc, char* argv[]) {
     Set counts;
     initSet(&counts, sizeof(Entry), 1001, entryHash, entryCmp, entryFree);
 
-    code = (byte*)codeAt(0);
+    setCode((byte*)codeAt(0));
 
     Entry entry = {.count = 1};
 
@@ -73,7 +71,7 @@ int main(int argc, char* argv[]) {
 }
 
 /// https://stackoverflow.com/questions/7666509/hash-function-for-string
-int entryHash(const void* e, int buckets) {
+static int entryHash(const void* e, int buckets) {
     char* str = ((Entry*)e)->bytecode;
     int hash = 5381;
     int c;
@@ -83,9 +81,9 @@ int entryHash(const void* e, int buckets) {
 
     return abs(hash) % buckets;
 }
-int entryCmp(const void* e1, const void* e2) {
+static int entryCmp(const void* e1, const void* e2) {
     return strcmp(((Entry*)e1)->bytecode, ((Entry*)e2)->bytecode);
 }
-void entryFree(void* e) {
+static void entryFree(void* e) {
     free(((Entry*)e)->bytecode);
 }

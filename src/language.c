@@ -7,26 +7,31 @@
 #define LowBits(x) ((x) & 0x0F)
 #define HighBits(x) (((x) & 0xF0) >> 4)
 
-extern byte* code;
+static byte* binop(byte*);
+static byte* other(byte*);
+static byte* boxed(byte*);
+static byte* control(byte*);
+static byte* pattern(byte*);
+static byte* call(byte*);
 
-const Handler handlers[] = {
-    [0] = binop,
-    [1] = other,
-    [2] = boxed,
-    [3] = boxed,
-    [4] = boxed,
-    [5] = control,
-    [6] = pattern,
-    [7] = call
-};
-
-void interpret(void) {
+byte* interpret(byte* code) {
     byte h = HighBits(*code);
+
+    if (h == 15) return NULL; // termination code
     if (h > 7) {
         fprintf(stderr, "Anomaly detected\n");
-        return;
+        return NULL;
     }
-    handlers[HighBits(*code)]();
+
+     switch (h) {
+         case 0: return binop(code);
+         case 1: return other(code);
+         case 2: case 3: case 4: return boxed(code);
+         case 5: return control(code);
+         case 6: return pattern(code);
+         case 7: return call(code);
+         default: failure("Unknown bytecode: %d", *code);
+     }
 }
 
 static int compute(byte code, int a, int b) {
@@ -48,17 +53,18 @@ static int compute(byte code, int a, int b) {
     }
 }
 
-void binop(void) {
+static byte* binop(byte* code) {
     int b = UNBOX(pop());
     int a = UNBOX(pop());
 
     push(BOX(compute(LowBits(*code++), a, b)));
+    return code;
 }
 
 #define GetInt (code += sizeof(int), *((int*)code - 1))
 #define GetString getString(GetInt)
 
-void other(void) {
+static byte* other(byte* code) {
     switch (LowBits(*code++)) {
         case Const:
             push(BOX(GetInt));
@@ -71,7 +77,7 @@ void other(void) {
             int nargs = GetInt;
 
             reverse(nargs);
-            void* sexp = Bsexp(BOX(nargs + 1), LtagHash(name), top());
+            void* sexp = Bsexp(BOX(nargs + 1), LtagHash(name), (int*)top());
 
             discard(nargs);
             push((size_t)sexp);
@@ -119,23 +125,23 @@ void other(void) {
         } break;
         default: failure("Unknown low code: %d", code[-1]);
     }
+    return code;
 }
 
 static size_t* locationAddress(byte code, int i) {
     switch (code) {
-        case Global: return (size_t*)globalAt(i);
+        case Global: return bot() - i;
         case Local: return getFrame() - i - 1;
         case Argument: return getFrame() + i + 3;
         case Closure: {
             int nargs = (int)getFrame()[1];
-            // TODO: incompatible size_t and int
             return BelemClosure((void*)getFrame()[nargs + 2], BOX(i));
         }
         default: failure("Invalid location code: '%d'", code);
     }
 }
 
-void boxed(void) {
+static byte* boxed(byte* code) {
     byte c = *code++;
     size_t* loc = locationAddress(LowBits(c), GetInt);
     switch (HighBits(c)) {
@@ -151,9 +157,10 @@ void boxed(void) {
             break;
         default: failure("Unknown higher bits in: '%d'", c);
     }
+    return code;
 }
 
-void control(void) {
+static byte* control(byte* code) {
     switch (LowBits(*code++)) {
         case CJmpZero: {
             byte* dest = (byte*)codeAt(GetInt);
@@ -223,6 +230,7 @@ void control(void) {
             break;
         default: failure("Unknown low code: %d", code[-1]);
     }
+    return code;
 }
 
 static int (*const patternValidators[])(void*) = {
@@ -234,7 +242,7 @@ static int (*const patternValidators[])(void*) = {
     [PClosure] =  Bclosure_tag_patt
 };
 
-void pattern(void) {
+static byte* pattern(byte* code) {
     size_t* x = (size_t*)pop();
     byte l = LowBits(*code++);
     if (l < 0 || l > PClosure)
@@ -246,26 +254,26 @@ void pattern(void) {
     else result = patternValidators[l](x);
 
     push(result);
+    return code;
 }
 
-static size_t callResult(byte l) {
-    switch (l) {
-        case LRead: return Lread();
-        case LWrite: return Lwrite((int)pop());
-        case LLenght: return Llength((void*)pop());
-        case LString: return (size_t)Lstring((void*)pop());
+static byte* call(byte* code) {
+    size_t r;
+    switch (LowBits(*code++)) {
+        case LRead: r = Lread(); break;
+        case LWrite: r = Lwrite((int)pop()); break;
+        case LLenght: r = Llength((void*)pop()); break;
+        case LString: r = (size_t)Lstring((void*)pop()); break;
         case BArray: {
             int n = GetInt;
             reverse(n);
             void* result = Barray(BOX(n), (void*)top());
             discard(n);
-            return (size_t)result;
+            r = (size_t)result;
+            break;
         }
-        default: failure("Unknown lower bits: '%d'", l);
+        default: failure("Unknown lower bits for call code '%d'", code[-1]);
     }
-}
-
-void call(void) {
-    size_t result = callResult(LowBits(*code++));
-    push(result);
+    push(r);
+    return code;
 }

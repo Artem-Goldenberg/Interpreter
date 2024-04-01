@@ -3,8 +3,6 @@
 #include "language.h"
 #include "bytereader.h"
 
-byte* code;
-
 int main(int argc, char* argv[]) {
     if (argc != 2) {
         fprintf(stderr, "Usage: ./main <bytefile>");
@@ -12,11 +10,10 @@ int main(int argc, char* argv[]) {
     }
 
     dumpFile(argv[1]);
-    initStack();
+    initStack(globalsCount());
 
-    code = (byte*)codeAt(0);
-    while (code) 
-        interpret();
+    byte* code = (byte*)codeAt(0);
+    while (code) code = interpret(code);
 
     destroyStack();
     deleteFile();

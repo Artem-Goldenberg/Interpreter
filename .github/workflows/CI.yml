@@ -4,11 +4,6 @@ name: CI
 
 # Controls when the workflow will run
 on:
-  # Triggers the workflow on push or pull request events but only for the "main" branch
-  push:
-    branches: [ "main" ]
-  pull_request:
-
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
 
@@ -19,11 +14,6 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - name: compiler-update
-        run: |
-          sudo apt update
-          sudo apt install gcc-multilib
-
       - name: Set-up OCaml 4.13.1
         uses: ocaml/setup-ocaml@v2
         with:
@@ -33,4 +23,9 @@ jobs:
       - run: opam depext Lama --yes --with-test
       - run: opam install Lama --yes
       - run: eval $(opam env)
-      - run: opam exec -- make test
+
+      - name: Perfomance Test
+        run: opam exec -- make perfomance
+
+      - name: Regression Test
+        run: opam exec -- make test

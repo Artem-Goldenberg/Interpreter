@@ -3,6 +3,7 @@
 
 /// To avoid linking with runtime
 void failure(char* message, ...);
+void setCode(byte* code);
 char* disassemle(void);
 
 #endif /* disassemle_h */

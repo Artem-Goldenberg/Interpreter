@@ -6,18 +6,7 @@
 typedef uint8_t byte;
 typedef uint32_t word;
 
-typedef void (*Handler)(void);
-
-void interpret(void);
-
-void binop(void);
-void other(void);
-void boxed(void);
-void control(void);
-void pattern(void);
-void call(void);
-
-extern const Handler handlers[];
+byte* interpret(byte* code);
 
 typedef enum {
     Plus = 1, Minus, Multiply, Divide, Mod,

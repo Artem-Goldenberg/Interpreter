@@ -1,7 +1,7 @@
 sources = main.c language.c bytereader.c stack.c
 stdlib = runtime/runtime.a
 
-analyserSources = analyser.c disassemle.c bytereader.c Set/Array.c Set/Set.c
+analyserSources = analyser.c disassemble.c bytereader.c Set/Array.c Set/Set.c
 
 CC = gcc
 CFLAGS = -m32 -g

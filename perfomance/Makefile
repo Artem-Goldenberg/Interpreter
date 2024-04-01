@@ -14,7 +14,7 @@ $(TESTS): %: %.lama
 	@echo "Measurements for $@:"
 	@$(LAMAC) -b $<
 	@command time -f "lamaI     (custom) : $@\t%Us" $(testI) $@.bc
-	@command time -f "lamac -i (standard): $@\t%U" $(LAMAC) -i $<
+	@command time -f "lamac -i (standard): $@\t%Us" $(LAMAC) -i $<
 
 clean:
 	$(RM) test*.log *.s *~ $(TESTS) *.i *.bc

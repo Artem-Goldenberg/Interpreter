@@ -1,6 +1,5 @@
-#include "disassemle.h"
+#include "disassemble.h"
 #include "bytereader.h"
-#include "language.h"
 #include <stdarg.h>
 
 #define LowBits(x) ((x) & 0x0F)
@@ -54,7 +53,11 @@ static char* printClosure(void);
 
 static byte* code;
 
-char* disassemle(void) {
+void setCode(byte* newCode) {
+    code = newCode;
+}
+
+char* disassemble(void) {
     if (!code) return NULL;
     byte c = *code++;
     byte h = HighBits(c), l = LowBits(c);

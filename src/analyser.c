@@ -1,7 +1,7 @@
 /* Lama SM Bytecode interpreter */
 #include "language.h"
 #include "bytereader.h"
-#include "disassemle.h"
+#include "disassemble.h"
 #include "Set/Set.h"
 
 typedef struct {
@@ -53,10 +53,7 @@ int main(int argc, char* argv[]) {
 
     Entry entry = {.count = 1};
 
-    while (code) {
-        entry.bytecode = disassemle();
-        if (!entry.bytecode) break;
-
+    while ((entry.bytecode = disassemble())) {
         Entry* found = searchSet(&counts, &entry);
         if (!found) addTo(&counts, &entry);
         else found->count++;

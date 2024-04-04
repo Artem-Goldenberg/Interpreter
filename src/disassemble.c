@@ -5,7 +5,7 @@
 #define LowBits(x) ((x) & 0x0F)
 #define HighBits(x) (((x) & 0xF0) >> 4)
 
-#define GetInt (code += sizeof(int), *((int*)code - 1))
+#define GetInt (code = (const byte*)getInt((const char*)code), *((int*)code - 1))
 #define GetString getString(GetInt)
 
 static char* const operationString[] = {
@@ -37,7 +37,7 @@ static void unknownCode(byte c) {
 }
 
 /// Dynamic print with format
-static char* dpf(const char* format, ...) {
+static char* dpf(const char* format, ...) { //va_list args) {
     va_list args, args2;
     va_start(args, format);
     va_copy(args2, args);
@@ -46,29 +46,58 @@ static char* dpf(const char* format, ...) {
     if (!result) failure("Cannot allocate space for string\n");
     vsprintf(result, format, args2);
     va_end(args);
+    va_end(args2);
     return result;
 }
 
+static const byte* code;
+
+//typedef struct {
+//    const byte* next;
+//    char* str;
+//} pair;
+//
+//pair dpf(const char* string, ...) {
+//    va_list args;
+//    va_start(args, string);
+//    pair result = {code, dynamicPrintf(string, args)};
+//    va_end(args);
+//    return result;
+//}
+
 static char* printClosure(void);
 
-static byte* code;
-
-void setCode(byte* newCode) {
+void setCode(const byte* newCode) {
     code = newCode;
 }
 
+const byte* getCode(void) {
+    return code;
+}
+
+#define CheckInBounds(i, array) \
+if ((i) >= sizeof(array) / sizeof(array[0])) unknownCode(c)
+
 char* disassemble(void) {
     if (!code) return NULL;
+
+    // reached end of the file
+    if (code == (const byte*)codeEnd()) return NULL;
+
+    checkBounds((const char*)code);
     byte c = *code++;
     byte h = HighBits(c), l = LowBits(c);
+
     switch (h) {
-        case 0: return dpf("BINOP\t%s", operationString[l - 1]); // binop
+        case 0: 
+            CheckInBounds(l, operationString);
+            return dpf("BINOP\t%s", operationString[l - 1]); // binop
         case 1: // other
             switch (l) {
                 case Const: return dpf("CONST\t%d", GetInt);
                 case String: return dpf("STRING\t%s", GetString);
                 case Sexp: {
-                    char* str = GetString;
+                    const char* str = GetString;
                     return dpf("SEXP\t%s %d", str, GetInt);
                 }
                 case Sti: return dpf("STI");
@@ -85,6 +114,8 @@ char* disassemble(void) {
         case 2: case 3: case 4: { // boxed
             if (l > Closure) unknownCode(c);
             int i = GetInt;
+            CheckInBounds(h - 2, loadOperationString);
+            CheckInBounds(l, locationSymbol);
             return dpf("%s\t%c(%d)", loadOperationString[h - 2], locationSymbol[l], i);
         }
         case 5: // control
@@ -106,7 +137,7 @@ char* disassemble(void) {
                     return dpf("CALL\t0x%.8x %d", addr, GetInt);
                 }
                 case Tag: {
-                    char* name = GetString;
+                    const char* name = GetString;
                     return dpf("TAG\t%s %d", name, GetInt);
                 }
                 case Array: return dpf("ARRAY\t%d", GetInt);
@@ -117,7 +148,9 @@ char* disassemble(void) {
                 case Line: return dpf("LINE\t%d", GetInt);
                 default: unknownCode(c);
             }
-        case 6: return dpf("PATT\t%s", patterString[l]); // pattern
+        case 6: 
+            CheckInBounds(l, patterString);
+            return dpf("PATT\t%s", patterString[l]); // pattern
         case 7: // call
             switch (l) {
                 case LRead: return dpf("CALL\tLread");
@@ -127,9 +160,7 @@ char* disassemble(void) {
                 case BArray: return dpf("CALL\tBarray\t%d", GetInt);
                 default: unknownCode(c);
             }
-        case 15: // terminate
-            code = NULL;
-            return NULL;
+        case 15: return dpf("STOP");
         default: unknownCode(c);
     }
     assert(0);
@@ -144,7 +175,7 @@ static int numDigits(int x) {
 static char* printClosure(void) {
     int addr = GetInt;
     int n = GetInt;
-    byte* rewind = code;
+    const byte* rewind = code;
 
     int digitSize = 0;
     for (int i = 0; i < n; ++i) {
@@ -160,10 +191,14 @@ static char* printClosure(void) {
     int j = sprintf(result, "CLOSURE\t0x%.8x", addr);
     code = rewind;
     for (int i = 0; i < n; ++i) {
-        byte loc = *code++;
-        if (loc > Closure) unknownCode(loc);
-        j = sprintf(result + j, "%c(%d)", locationSymbol[loc], GetInt);
+        checkBounds((const char*)code);
+        byte c = *code++;
+
+        CheckInBounds(c, locationSymbol);
+
+        j = sprintf(result + j, "%c(%d)", locationSymbol[c], GetInt);
     }
+
     assert(j == strSize + digitSize + n * 3 + 1);
     return result;
 }

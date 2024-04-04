@@ -1,5 +1,6 @@
 #include "language.h"
 #include "stack.h"
+#include "stack-critical.h"
 #include "bytereader.h"
 
 #include "runtime/runtime.h"
@@ -7,14 +8,15 @@
 #define LowBits(x) ((x) & 0x0F)
 #define HighBits(x) (((x) & 0xF0) >> 4)
 
-static byte* binop(byte*);
-static byte* other(byte*);
-static byte* boxed(byte*);
-static byte* control(byte*);
-static byte* pattern(byte*);
-static byte* call(byte*);
+static const byte* binop(const byte*);
+static const byte* other(const byte*);
+static const byte* boxed(const byte*);
+static const byte* control(const byte*);
+static const byte* pattern(const byte*);
+static const byte* call(const byte*);
 
-byte* interpret(byte* code) {
+const byte* interpret(const byte* code) {
+    checkBounds((char*)code);
     byte h = HighBits(*code);
 
     if (h == 15) return NULL; // termination code
@@ -53,7 +55,7 @@ static int compute(byte code, int a, int b) {
     }
 }
 
-static byte* binop(byte* code) {
+static const byte* binop(const byte* code) {
     int b = UNBOX(pop());
     int a = UNBOX(pop());
 
@@ -61,23 +63,23 @@ static byte* binop(byte* code) {
     return code;
 }
 
-#define GetInt (code += sizeof(int), *((int*)code - 1))
+#define GetInt (code = (byte*)getInt((char*)code), *((int*)code - 1))
 #define GetString getString(GetInt)
 
-static byte* other(byte* code) {
+static const byte* other(const byte* code) {
     switch (LowBits(*code++)) {
         case Const:
             push(BOX(GetInt));
             break;
         case String:
-            push((size_t)Bstring(GetString));
+            push((size_t)Bstring((char*)GetString));
             break;
         case Sexp: {
-            char* name = GetString;
+            const char* name = GetString;
             int nargs = GetInt;
 
             reverse(nargs);
-            void* sexp = Bsexp(BOX(nargs + 1), LtagHash(name), (int*)top());
+            void* sexp = Bsexp(BOX(nargs + 1), LtagHash((char*)name), (int*)top());
 
             discard(nargs);
             push((size_t)sexp);
@@ -141,7 +143,7 @@ static size_t* locationAddress(byte code, int i) {
     }
 }
 
-static byte* boxed(byte* code) {
+static const byte* boxed(const byte* code) {
     byte c = *code++;
     size_t* loc = locationAddress(LowBits(c), GetInt);
     switch (HighBits(c)) {
@@ -160,7 +162,7 @@ static byte* boxed(byte* code) {
     return code;
 }
 
-static byte* control(byte* code) {
+static const byte* control(const byte* code) {
     switch (LowBits(*code++)) {
         case CJmpZero: {
             byte* dest = (byte*)codeAt(GetInt);
@@ -196,7 +198,7 @@ static byte* control(byte* code) {
                 byte loc = LowBits(*code++);
                 binds[i] = (int)*locationAddress(loc, GetInt);
             }
-            push((size_t)Bclosure(BOX(nbinds), codeAt(section), binds));
+            push((size_t)Bclosure(BOX(nbinds), (char*)codeAt(section), binds));
             free(binds);
         } break;
         case CallC: {
@@ -216,7 +218,7 @@ static byte* control(byte* code) {
             code = (byte*)codeAt(section);
         } break;
         case Tag: {
-            int hash = LtagHash(GetString);
+            int hash = LtagHash((char*)GetString);
             push(Btag((void*)pop(), hash, BOX(GetInt)));
         } break;
         case Array: {
@@ -242,7 +244,7 @@ static int (*const patternValidators[])(void*) = {
     [PClosure] =  Bclosure_tag_patt
 };
 
-static byte* pattern(byte* code) {
+static const byte* pattern(const byte* code) {
     size_t* x = (size_t*)pop();
     byte l = LowBits(*code++);
     if (l < 0 || l > PClosure)
@@ -257,7 +259,7 @@ static byte* pattern(byte* code) {
     return code;
 }
 
-static byte* call(byte* code) {
+static const byte* call(const byte* code) {
     size_t r;
     switch (LowBits(*code++)) {
         case LRead: r = Lread(); break;

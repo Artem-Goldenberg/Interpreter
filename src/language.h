@@ -6,7 +6,7 @@
 typedef uint8_t byte;
 typedef uint32_t word;
 
-byte* interpret(byte* code);
+const byte* interpret(const byte* code);
 
 typedef enum {
     Plus = 1, Minus, Multiply, Divide, Mod,

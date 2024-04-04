@@ -4,7 +4,7 @@ stdlib = runtime/runtime.a
 analyserSources = analyser.c disassemble.c bytereader.c Set/Array.c Set/Set.c
 
 CC = gcc
-CFLAGS = -m32 -g
+CFLAGS = -m32 -g -O2
 
 lamaI: $(sources) $(stdlib)
 	$(LINK.c) $^ -o $@

@@ -12,7 +12,7 @@ int main(int argc, char* argv[]) {
     dumpFile(argv[1]);
     initStack(globalsCount());
 
-    byte* code = (byte*)codeAt(0);
+    const byte* code = (const byte*)codeAt(0);
     while (code) code = interpret(code);
 
     destroyStack();

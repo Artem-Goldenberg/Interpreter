@@ -7,15 +7,36 @@ int globalsCount(void) {
     return current->global_area_size;
 }
 
-char* codeAt(int pos) {
+const char* codeEnd(void) {
+    return current->code_ptr + current->code_size;
+}
+
+const char* codeAt(int pos) {
+    if (pos >= current->code_size)
+        failure("Invalid code offset: '%d'\n", pos);
     return current->code_ptr + pos;
 }
 
-char* getString(int pos) {
+void checkBounds(const char* code) {
+    if (code < current->code_ptr)
+        failure("Code pointer broke a lower bound\n");
+    if (code - current->code_ptr >= current->code_size)
+        failure("Code pointer broke an upper bound\n");
+}
+
+const char* getInt(const char* code) {
+    code += sizeof(int);
+    checkBounds(code);
+    return code;
+}
+
+const char* getString(int pos) {
+    if (pos >= current->stringtab_size)
+        failure("Invalid string table offset: '%d'\n", pos);
     return current->string_ptr + pos;
 }
 
-char* publicName(int i) {
+const char* publicName(int i) {
     return getString(current->public_ptr[i*2]);
 }
 
@@ -31,7 +52,7 @@ static void badFile(const char* msg) {
     failure("Incorrect file format: %s\n", msg);
 }
 
-void dumpFile(char *fname) {
+void dumpFile(const char *fname) {
     FILE *f = fopen (fname, "rb");
     long size;
     bytefile *file;
@@ -70,6 +91,12 @@ void dumpFile(char *fname) {
     file->string_ptr  = &file->buffer [file->public_symbols_number * 2 * sizeof(int)];
     file->public_ptr  = (int*) file->buffer;
     file->code_ptr    = &file->string_ptr [file->stringtab_size];
+
+    size_t codeOffset = file->public_symbols_number * 2 * sizeof(int) + file->stringtab_size;
+    assert(size >= 3 * sizeof(int) + codeOffset);
+
+    file->code_size = (int)(size - 3 * sizeof(int) - codeOffset);
+    // for 3 ints before buffer    ^^^^^^^^^^^    and offset afterwards;
 
     current = file;
 }

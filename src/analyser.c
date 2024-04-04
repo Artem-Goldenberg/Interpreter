@@ -5,7 +5,10 @@
 #include "Set/Set.h"
 
 typedef struct {
-    char* bytecode;
+    const byte* code;
+    int codeSize;
+
+    char* string;
     int count;
 } Entry;
 
@@ -34,14 +37,14 @@ static void printCounts(Set* counts) {
     printf("Count\tBytecode\n");
     printf("------------------\n");
     for (int i = 0; i < n; ++i)
-        printf("%2d\t%s\n", base[i].count, base[i].bytecode);
+        printf("%2d\t%s\n", base[i].count, base[i].string);
 
     free(base);
 }
 
 int main(int argc, char* argv[]) {
     if (argc != 2) {
-        fprintf(stderr, "Usage: ./analyser <bytecode file>");
+        fprintf(stderr, "Usage: ./analyser <bytecode file>\n");
         return 1;
     }
     dumpFile(argv[1]);
@@ -49,14 +52,18 @@ int main(int argc, char* argv[]) {
     Set counts;
     initSet(&counts, sizeof(Entry), 1001, entryHash, entryCmp, entryFree);
 
-    setCode((byte*)codeAt(0));
+    setCode((const byte*)codeAt(0));
 
-    Entry entry = {.count = 1};
+    Entry entry = {.count = 1, .code = getCode()};
 
-    while ((entry.bytecode = disassemble())) {
+    while ((entry.string = disassemble())) {
+        entry.codeSize = (int)(getCode() - entry.code);
         Entry* found = searchSet(&counts, &entry);
+
         if (!found) addTo(&counts, &entry);
         else found->count++;
+
+        entry.code = getCode();
     }
 
     printCounts(&counts);
@@ -69,7 +76,7 @@ int main(int argc, char* argv[]) {
 
 /// https://stackoverflow.com/questions/7666509/hash-function-for-string
 static int entryHash(const void* e, int buckets) {
-    char* str = ((Entry*)e)->bytecode;
+    char* str = ((Entry*)e)->string;
     int hash = 5381;
     int c;
 
@@ -78,9 +85,14 @@ static int entryHash(const void* e, int buckets) {
 
     return abs(hash) % buckets;
 }
+
 static int entryCmp(const void* e1, const void* e2) {
-    return strcmp(((Entry*)e1)->bytecode, ((Entry*)e2)->bytecode);
+    const Entry* a = (const Entry*)e1;
+    const Entry* b = (const Entry*)e2;
+    if (a->codeSize != b->codeSize) return a->codeSize - b->codeSize;
+    return memcmp(a->code, b->code, a->codeSize);
 }
+
 static void entryFree(void* e) {
-    free(((Entry*)e)->bytecode);
+    free(((Entry*)e)->string);
 }

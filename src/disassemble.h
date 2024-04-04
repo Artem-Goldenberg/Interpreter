@@ -5,7 +5,9 @@
 
 /// To avoid linking with runtime
 void failure(char* message, ...);
-void setCode(byte* code);
+
+const byte* getCode(void);
+void setCode(const byte* code);
 char* disassemble(void);
 
 #endif /* disassemle_h */

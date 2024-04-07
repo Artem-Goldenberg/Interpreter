@@ -22,7 +22,7 @@ make perfomance [LAMAC=...]
 
 Timings on my machine:
 ```
-lamaI     (custom) : Sort	3.49s
+lamaI     (custom) : Sort	2.53s
 lamac -i (standard): Sort   ♾️s (lamac -i hangs completely on my machine, I don't know why)
 ```
 

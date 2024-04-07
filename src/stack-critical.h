@@ -10,7 +10,7 @@ extern const size_t* stackEnd;
 #define Up(p, n) p = (size_t)((size_t*)p + (n))
 #define Down(p, n) p = (size_t)((size_t*)p - (n))
 
-inline void push(size_t value) {
+static inline void push(size_t value) {
     if (__gc_stack_top == (size_t)stackEnd)
         failure("Push to a full stack\n");
 
@@ -18,15 +18,15 @@ inline void push(size_t value) {
     *(size_t*)__gc_stack_top = value;
 }
 
-inline size_t* top(void) {
+static inline size_t* top(void) {
     return (size_t*)__gc_stack_top;
 }
 
-inline size_t* bot(void) {
+static inline size_t* bot(void) {
     return (size_t*)((size_t)stackEnd + STACK_SIZE);
 }
 
-inline size_t pop(void) {
+static inline size_t pop(void) {
     if (__gc_stack_top == __gc_stack_bottom)
         failure("Pop from an empty stack\n");
 
@@ -36,9 +36,8 @@ inline size_t pop(void) {
     return result;
 }
 
-inline void reverse(int n) {
-    assert(n >= 0);
-    if (__gc_stack_top > __gc_stack_bottom - sizeof(size_t) * n)
+static inline void reverse(int n) {
+    if (__gc_stack_top > __gc_stack_bottom - sizeof(size_t) * n || n < 0)
         failure("Not enough elements on stack to reverse\n");
 
     size_t* stack = (size_t*)__gc_stack_top;
@@ -49,27 +48,26 @@ inline void reverse(int n) {
     }
 }
 
-inline void discard(int n) {
-    assert(n >= 0);
-    if (__gc_stack_top > __gc_stack_bottom - sizeof(size_t) * n)
+static inline void discard(int n) {
+    if (__gc_stack_top > __gc_stack_bottom - sizeof(size_t) * n || n < 0)
         failure("Discarding from an empty stack\n");
 
     Up(__gc_stack_top, n);
 }
 
-inline void resetToFrame(void) {
+static inline void resetToFrame(void) {
     __gc_stack_top = (size_t)fp;
 }
 
-inline void beginFrame(void) {
+static inline void beginFrame(void) {
     fp = (size_t*)__gc_stack_top;
 }
 
-inline void setFrame(size_t* ptr) {
+static inline void setFrame(size_t* ptr) {
     fp = ptr;
 }
 
-inline size_t* getFrame(void) {
+static inline size_t* getFrame(void) {
     return fp;
 }
 

@@ -2,12 +2,11 @@
 #define disassemle_h
 
 #include "language.h"
+#include <stdio.h>
 
 /// To avoid linking with runtime
 void failure(char* message, ...);
 
-const byte* getCode(void);
-void setCode(const byte* code);
-char* disassemble(void);
+const byte* disassemble(const byte* code, FILE* out);
 
 #endif /* disassemle_h */

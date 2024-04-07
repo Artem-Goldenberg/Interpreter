@@ -7,8 +7,6 @@
 typedef struct {
     const byte* code;
     int codeSize;
-
-    char* string;
     int count;
 } Entry;
 
@@ -36,8 +34,11 @@ static void printCounts(Set* counts) {
 
     printf("Count\tBytecode\n");
     printf("------------------\n");
-    for (int i = 0; i < n; ++i)
-        printf("%2d\t%s\n", base[i].count, base[i].string);
+    for (int i = 0; i < n; ++i) {
+        printf("%2d\t", base[i].count);
+        disassemble(base[i].code, stdout);
+        printf("\n");
+    }
 
     free(base);
 }
@@ -50,20 +51,21 @@ int main(int argc, char* argv[]) {
     dumpFile(argv[1]);
 
     Set counts;
-    initSet(&counts, sizeof(Entry), 1001, entryHash, entryCmp, entryFree);
+    initSet(&counts, sizeof(Entry), 1001, entryHash, entryCmp, NULL);
 
-    setCode((const byte*)codeAt(0));
+    const byte* code = (const byte*)codeAt(0);
 
-    Entry entry = {.count = 1, .code = getCode()};
+    Entry entry = {.count = 1, .code = code};
 
-    while ((entry.string = disassemble())) {
-        entry.codeSize = (int)(getCode() - entry.code);
+    // just skip to the next code without printing
+    while ((code = disassemble(code, NULL))) {
+        entry.codeSize = (int)(code - entry.code);
         Entry* found = searchSet(&counts, &entry);
 
         if (!found) addTo(&counts, &entry);
         else found->count++;
 
-        entry.code = getCode();
+        entry.code = code;
     }
 
     printCounts(&counts);
@@ -76,12 +78,11 @@ int main(int argc, char* argv[]) {
 
 /// https://stackoverflow.com/questions/7666509/hash-function-for-string
 static int entryHash(const void* e, int buckets) {
-    char* str = ((Entry*)e)->string;
+    Entry* x = (Entry*)e;
     int hash = 5381;
-    int c;
 
-    while ((c = *str++))
-        hash = ((hash << 5) + hash) + c; /* hash * 33 + c */
+    for (int i = 0; i < x->codeSize; ++i)
+        hash = ((hash << 5) + hash) + x->code[i];
 
     return abs(hash) % buckets;
 }
@@ -91,8 +92,4 @@ static int entryCmp(const void* e1, const void* e2) {
     const Entry* b = (const Entry*)e2;
     if (a->codeSize != b->codeSize) return a->codeSize - b->codeSize;
     return memcmp(a->code, b->code, a->codeSize);
-}
-
-static void entryFree(void* e) {
-    free(((Entry*)e)->string);
 }

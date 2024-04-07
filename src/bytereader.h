@@ -17,25 +17,48 @@ typedef struct {
     char  buffer[0];
 } bytefile;
 
-int globalsCount(void);
+extern bytefile* currentFile;
 
-const char* codeEnd(void);
-const char* codeAt(int pos);
+static inline int globalsCount(void) {
+    return currentFile->global_area_size;
+}
 
-/* Check if `code` is safe to dereference */
-void checkBounds(const char* code);
+static inline const char* codeEnd(void) {
+    return currentFile->code_ptr + currentFile->code_size;
+}
 
-/* Extracts int from code, signals error if outside bounds, returns new code position */
-const char* getInt(const char* code);
+static inline const char* codeAt(int pos) {
+    if (pos >= currentFile->code_size)
+        failure("Invalid code offset: '%d'\n", pos);
+    return currentFile->code_ptr + pos;
+}
 
-/* Gets a string from a string table by an index */
-const char* getString(int pos);
+static inline void checkBounds(const char* code) {
+    if (code < currentFile->code_ptr)
+        failure("Code pointer broke a lower bound\n");
+    if (code - currentFile->code_ptr >= currentFile->code_size)
+        failure("Code pointer broke an upper bound\n");
+}
 
-/* Gets a name for a public symbol */
-const char* publicName(int i);
+static inline const char* getInt(const char* code) {
+    code += sizeof(int);
+    checkBounds(code);
+    return code;
+}
 
-/* Gets an offset for a publie symbol */
-int publicOffset(int i);
+static inline const char* getString(int pos) {
+    if (pos >= currentFile->stringtab_size)
+        failure("Invalid string table offset: '%d'\n", pos);
+    return currentFile->string_ptr + pos;
+}
+
+static inline const char* publicName(int i) {
+    return getString(currentFile->public_ptr[i*2]);
+}
+
+static inline int publicOffset(int i) {
+    return currentFile->public_ptr[i*2+1];
+}
 
 /* Reads a binary bytecode file by name and unpacks it */
 void dumpFile(const char *fname);

@@ -15,7 +15,7 @@
 
 #define WORD_SIZE (CHAR_BIT * sizeof(int))
 
-void failure (char *s, ...) __attribute__((noreturn));
+void failure (char *s, ...);
 
 extern void* Bstring(void*);
 extern int LtagHash(char*);

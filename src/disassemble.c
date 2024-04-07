@@ -36,49 +36,24 @@ static void unknownCode(byte c) {
     failure("Unknown code: %d-%d", HighBits(c), LowBits(c));
 }
 
-/// Dynamic print with format
-static char* dpf(const char* format, ...) { //va_list args) {
-    va_list args, args2;
+/// Just print into file if not null, with format
+static void dpf(FILE* out, const char* format, ...) { //va_list args) {
+    if (!out) return;
+
+    va_list args;
     va_start(args, format);
-    va_copy(args2, args);
-    int size = vsnprintf(NULL, 0, format, args);
-    char* result = malloc(size + 1);
-    if (!result) failure("Cannot allocate space for string\n");
-    vsprintf(result, format, args2);
+
+    vfprintf(out, format, args);
+
     va_end(args);
-    va_end(args2);
-    return result;
 }
 
-static const byte* code;
-
-//typedef struct {
-//    const byte* next;
-//    char* str;
-//} pair;
-//
-//pair dpf(const char* string, ...) {
-//    va_list args;
-//    va_start(args, string);
-//    pair result = {code, dynamicPrintf(string, args)};
-//    va_end(args);
-//    return result;
-//}
-
-static char* printClosure(void);
-
-void setCode(const byte* newCode) {
-    code = newCode;
-}
-
-const byte* getCode(void) {
-    return code;
-}
+static const byte* printClosure(const byte* code, FILE* out);
 
 #define CheckInBounds(i, array) \
 if ((i) >= sizeof(array) / sizeof(array[0])) unknownCode(c)
 
-char* disassemble(void) {
+const byte* disassemble(const byte* code, FILE* out) {
     if (!code) return NULL;
 
     // reached end of the file
@@ -91,114 +66,108 @@ char* disassemble(void) {
     switch (h) {
         case 0: 
             CheckInBounds(l, operationString);
-            return dpf("BINOP\t%s", operationString[l - 1]); // binop
+            dpf(out, "BINOP\t%s", operationString[l - 1]); // binop
+            break;
         case 1: // other
             switch (l) {
-                case Const: return dpf("CONST\t%d", GetInt);
-                case String: return dpf("STRING\t%s", GetString);
+                case Const: dpf(out, "CONST\t%d", GetInt); break;
+                case String: dpf(out, "STRING\t%s", GetString); break;
                 case Sexp: {
                     const char* str = GetString;
-                    return dpf("SEXP\t%s %d", str, GetInt);
-                }
-                case Sti: return dpf("STI");
-                case Sta: return dpf("STA");
-                case Jmp: return dpf("JMP\t0x%.8x", GetInt);
-                case End: return dpf("END");
-                case Ret: return dpf("RET");
-                case Drop: return dpf("DROP");
-                case Dup: return dpf("DUP");
-                case Swap: return dpf("SWAP");
-                case Elem: return dpf("ELEM");
+                    dpf(out, "SEXP\t%s %d", str, GetInt);
+                } break;
+                case Sti: dpf(out, "STI"); break;
+                case Sta: dpf(out, "STA"); break;
+                case Jmp: dpf(out, "JMP\t0x%.8x", GetInt); break;
+                case End: dpf(out, "END"); break;
+                case Ret: dpf(out, "RET"); break;
+                case Drop: dpf(out, "DROP"); break;
+                case Dup: dpf(out, "DUP"); break;
+                case Swap: dpf(out, "SWAP"); break;
+                case Elem: dpf(out, "ELEM"); break;
                 default: unknownCode(c);
-            }
+            } break;
         case 2: case 3: case 4: { // boxed
             if (l > Closure) unknownCode(c);
             int i = GetInt;
             CheckInBounds(h - 2, loadOperationString);
             CheckInBounds(l, locationSymbol);
-            return dpf("%s\t%c(%d)", loadOperationString[h - 2], locationSymbol[l], i);
-        }
+            dpf(out, "%s\t%c(%d)", loadOperationString[h - 2], locationSymbol[l], i);
+        } break;
         case 5: // control
             switch (l) {
-                case CJmpZero: return dpf("CJMPz\t0x%.8x", GetInt);
-                case CJmpNotZero: return dpf("CJMPnz\t0x%.8x", GetInt);
+                case CJmpZero: dpf(out, "CJMPz\t0x%.8x", GetInt); break;
+                case CJmpNotZero: dpf(out, "CJMPnz\t0x%.8x", GetInt); break;
                 case Begin: {
                     int first = GetInt;
-                    return dpf("BEGIN\t%d %d", first, GetInt);
+                    dpf(out, "BEGIN\t%d %d", first, GetInt); 
+                    break;
                 }
                 case CBegin: {
                     int first = GetInt;
-                    return dpf("CBEGIN\t%d %d", first, GetInt);
+                    dpf(out, "CBEGIN\t%d %d", first, GetInt); 
+                    break;
                 }
-                case BClosure: return printClosure();
-                case CallC: return dpf("CALLC\t%d", GetInt);
+                case BClosure: code = printClosure(code, out); break;
+                case CallC: dpf(out, "CALLC\t%d", GetInt); break;
                 case Call: {
                     int addr = GetInt;
-                    return dpf("CALL\t0x%.8x %d", addr, GetInt);
+                    dpf(out, "CALL\t0x%.8x %d", addr, GetInt); 
+                    break;
                 }
                 case Tag: {
                     const char* name = GetString;
-                    return dpf("TAG\t%s %d", name, GetInt);
+                    dpf(out, "TAG\t%s %d", name, GetInt); 
+                    break;
                 }
-                case Array: return dpf("ARRAY\t%d", GetInt);
+                case Array: dpf(out, "ARRAY\t%d", GetInt); break;
                 case Fail: {
                     int first = GetInt;
-                    return dpf("FAIL\t%d %d", first, GetInt);
+                    dpf(out, "FAIL\t%d %d", first, GetInt); break;
                 }
-                case Line: return dpf("LINE\t%d", GetInt);
+                case Line: dpf(out, "LINE\t%d", GetInt); break;
                 default: unknownCode(c);
-            }
-        case 6: 
+            } break;
+        case 6:
             CheckInBounds(l, patterString);
-            return dpf("PATT\t%s", patterString[l]); // pattern
+            dpf(out, "PATT\t%s", patterString[l]); // pattern
+            break;
         case 7: // call
             switch (l) {
-                case LRead: return dpf("CALL\tLread");
-                case LWrite: return dpf("CALL\tLwrite");
-                case LLenght: return dpf("CALL\tLlength");
-                case LString: return dpf("CALL\tLstring");
-                case BArray: return dpf("CALL\tBarray\t%d", GetInt);
+                case LRead: dpf(out, "CALL\tLread"); break;
+                case LWrite: dpf(out, "CALL\tLwrite"); break;
+                case LLenght: dpf(out, "CALL\tLlength"); break;
+                case LString: dpf(out, "CALL\tLstring"); break;
+                case BArray: dpf(out, "CALL\tBarray\t%d", GetInt); break;
                 default: unknownCode(c);
-            }
-        case 15: return dpf("STOP");
+            } break;
+        case 15: dpf(out, "STOP"); break;
         default: unknownCode(c);
     }
-    assert(0);
+    return code;
 }
 
-static int numDigits(int x) {
-    int result = 1;
-    while (x /= 10) result++;
-    return result;
-}
-
-static char* printClosure(void) {
+static const byte* printClosure(const byte* code, FILE* out) {
     int addr = GetInt;
     int n = GetInt;
-    const byte* rewind = code;
 
-    int digitSize = 0;
-    for (int i = 0; i < n; ++i) {
-        code++;
-        digitSize += numDigits(GetInt);
+    if (n < 0)
+        failure("Invalid number of closure arguments: '%d'\n", n);
+
+    if (!out) {
+        for (int i = 0; i < n; ++i) {
+            code++; GetInt;
+        }
+        return code;
     }
 
-    int strSize = snprintf(NULL, 0, "CLOSURE\t0x%.8x", addr);
-    int totalSize = strSize + digitSize + n * 3 + 1;
-    char* result = malloc(totalSize); // for S() and \0
-    if (!result) failure("Not enough memory to allocate, need %d bytes", totalSize);
-
-    int j = sprintf(result, "CLOSURE\t0x%.8x", addr);
-    code = rewind;
+    fprintf(out, "CLOSURE\t0x%.8x", addr);
     for (int i = 0; i < n; ++i) {
         checkBounds((const char*)code);
         byte c = *code++;
-
         CheckInBounds(c, locationSymbol);
-
-        j = sprintf(result + j, "%c(%d)", locationSymbol[c], GetInt);
+        fprintf(out, "%c(%d)", locationSymbol[c], GetInt);
     }
 
-    assert(j == strSize + digitSize + n * 3 + 1);
-    return result;
+    return code;
 }

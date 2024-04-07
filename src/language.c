@@ -1,9 +1,7 @@
-#include "language.h"
 #include "stack.h"
 #include "stack-critical.h"
+#include "language.h"
 #include "bytereader.h"
-
-#include "runtime/runtime.h"
 
 #define LowBits(x) ((x) & 0x0F)
 #define HighBits(x) (((x) & 0xF0) >> 4)
@@ -131,13 +129,14 @@ static const byte* other(const byte* code) {
 }
 
 static size_t* locationAddress(byte code, int i) {
+    if (i < 0) failure("Invalid variable offset: '%d'\n", i);
     switch (code) {
         case Global: return bot() - i;
         case Local: return getFrame() - i - 1;
         case Argument: return getFrame() + i + 3;
         case Closure: {
             int nargs = (int)getFrame()[1];
-            return BelemClosure((void*)getFrame()[nargs + 2], BOX(i));
+            return (size_t*)BelemClosure((void*)getFrame()[nargs + 2], BOX(i));
         }
         default: failure("Invalid location code: '%d'", code);
     }
@@ -179,6 +178,8 @@ static const byte* control(const byte* code) {
             beginFrame();
             /* int nargs = */ GetInt;
             int nlocals = GetInt;
+            if (nlocals < 0) 
+                failure("Invalid number of local variables: '%d'\n", nlocals);
             for (int i = 0; i < nlocals; ++i)
                 push(BOX(0));
         } break;
@@ -187,14 +188,19 @@ static const byte* control(const byte* code) {
             beginFrame();
             /* int nargs = */ GetInt;
             int nlocals = GetInt;
+            if (nlocals < 0) 
+                failure("Invalid number of local variables: '%d'\n", nlocals);
             for (int i = 0; i < nlocals; ++i)
                 push(BOX(0));
         } break;
         case BClosure: {
             int section = GetInt;
             int nbinds = GetInt;
+            if (nbinds < 0)
+                failure("Invalid number of bind variables: '%d'\n", nbinds);
             int* binds = calloc(nbinds, sizeof(int));
             for (int i = 0; i < nbinds; ++i) {
+                checkBounds((const char*)code);
                 byte loc = LowBits(*code++);
                 binds[i] = (int)*locationAddress(loc, GetInt);
             }
@@ -219,10 +225,16 @@ static const byte* control(const byte* code) {
         } break;
         case Tag: {
             int hash = LtagHash((char*)GetString);
-            push(Btag((void*)pop(), hash, BOX(GetInt)));
+            int len = GetInt;
+            if (len < 0)
+                failure("Invalid tag length: '%d'\n", len);
+            push(Btag((void*)pop(), hash, BOX(len)));
         } break;
         case Array: {
-            push(Barray_patt((void*)pop(), BOX(GetInt)));
+            int len = GetInt;
+            if (len < 0)
+                failure("Invaid tag lenght: '%d'\n", len);
+            push(Barray_patt((void*)pop(), BOX(len)));
         } break;
         case Fail: {
             int a = GetInt, b = GetInt;
@@ -260,7 +272,7 @@ static const byte* pattern(const byte* code) {
 }
 
 static const byte* call(const byte* code) {
-    size_t r;
+    size_t r = 0;
     switch (LowBits(*code++)) {
         case LRead: r = Lread(); break;
         case LWrite: r = Lwrite((int)pop()); break;

@@ -1,4 +1,4 @@
-#  [The Lama Language](https://github.com/PLTools/Lama) Interpreter
+#  The [Lama Language](https://github.com/PLTools/Lama) Interpreter
 
 To just build the interpreter run:
 ```
